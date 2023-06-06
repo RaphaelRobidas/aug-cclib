@@ -159,6 +159,9 @@ def ccread(source, *args, **kwargs):
         a ccData object containing cclib data attributes
     """
 
+    if not os.path.isfile(source):
+        raise Exception(f"File does not exist: {source}")
+
     log = ccopen(source, *args, **kwargs)
     if log:
         if kwargs.get("verbose", None):
