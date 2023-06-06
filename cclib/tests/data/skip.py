@@ -1,0 +1,38 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2017, the cclib development team
+#
+# This file is part of cclib (http://cclib.github.io) and is distributed under
+# the terms of the BSD 3-Clause License.
+
+import sys
+
+"""Tools for skipping data tests in cclib."""
+
+# DOOD?
+
+def skipForParser(parser, msg: str):
+    """Return a decorator that skips the test for specified parser."""
+    def testdecorator(testfunc):
+        def testwrapper(self, *args, **kwargs):
+            if testfunc.logfile.logname == parser:
+                self.skipTest(msg)
+            else:
+                testfunc(self, *args, **kwargs)
+        return testwrapper
+    return testdecorator
+
+
+def skipForLogfile(fragment, msg: str):
+    """Return a decorator that skips the test for logfiles containing fragment."""
+    def testdecorator(testfunc):
+        def testwrapper(self, *args, **kwargs):
+            # self.logfile.filename may be a string or list of strings.
+            if fragment in testfunc.logfile.filename or any(fragment in filename for filename in testfunc.logfile.filename):
+                self.skipTest(msg)
+            else:
+                testfunc(self, *args, **kwargs)
+        return testwrapper
+    return testdecorator
+
+

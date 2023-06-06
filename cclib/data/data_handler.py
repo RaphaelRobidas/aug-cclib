@@ -52,3 +52,26 @@ def get_data(parser: str, subdir, files, stream=None, loglevel: int = logging.ER
 
 def read_data(short_path):
     return cclib.io.ccread(get_data_path(short_path))
+
+def get_test_data():
+    """Return a dict of the test file data."""
+
+    # this should be cached whenever possible
+    index_path = get_data_path("meta/testdata")
+
+    with open(index_path) as testdatafile:
+        lines = testdatafile.readlines()
+
+    # Remove blank lines and those starting with '#'.
+    lines = [line for line in lines if (line.strip() and line[0] != '#')]
+
+    # Remove comment at end of lines (everything after a '#').
+    lines = [line.split('#')[0] for line in lines]
+
+    # Transform remaining lines into dictionaries.
+    cols = [line.split() for line in lines]
+    labels = ('module', 'parser', 'class', 'subdir', 'files')
+    testdata = [dict(zip(labels, (c[0], c[1], c[2], c[3], c[4:]))) for c in cols]
+
+    return testdata
+

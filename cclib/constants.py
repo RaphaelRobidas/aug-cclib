@@ -1,4 +1,5 @@
 import cclib
+import importlib
 
 parser_names = [
     "ADF", "DALTON", "FChk", "GAMESS", "GAMESSUK", "Gaussian", "Jaguar",
@@ -17,5 +18,4 @@ module_names = [
     "MP", "CC", "CI", "TD", "TDun",             # Post-SCF calculations.
     "BOMD", "NMR", "Polar", "Scan", "vib"       # Other property calculations.
 ]
-
 

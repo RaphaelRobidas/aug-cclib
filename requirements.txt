@@ -1,6 +1,5 @@
 packaging>=19.0
 numpy
-
 # methods
 scipy>=1.2.0
 periodictable
@@ -13,5 +12,6 @@ sphinx>=6.0
 
 # For testing
 pytest
+pytest-subtests
 coverage
 pytest-cov
