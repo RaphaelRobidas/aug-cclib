@@ -10,7 +10,6 @@ pytest.importorskip("pyscf", reason="Must install pyscf to run this test")
 from test.test_data import getdatafile
 
 from cclib.bridge import cclib2pyscf
-from cclib.parser.utils import convertor
 
 import numpy as np
 
@@ -33,7 +32,7 @@ class PyscfTest:
         mhf = dft.RKS(pyscfmol)
         mhf.xc = "b3lyp"
         en = mhf.kernel()
-        assert abs(convertor(en, "hartree", "eV") - refen) < convertor(5.0e-5, "hartree", "eV")
+        assert abs(en - refen) < 5.0e-5
         # check that default basis is returned if basis is not present.
         del self.data.gbasis
         pyscfmol2 = cclib2pyscf.makepyscf(self.data)

@@ -100,9 +100,7 @@ class GenericGeoOptTest:
     @skipForLogfile("FChk/basicQChem5.4", "Q-Chem doesn't print SCF energy to fchk")
     def testscfenergy(self, data) -> None:
         """Is the SCF energy close to target?"""
-        assert abs(
-            data.scfenergies[-1] - utils.convertor(self.scfenergy, "hartree", "eV")
-        ) < utils.convertor(self.scfenergy_tolerance, "hartree", "eV")
+        assert abs(data.scfenergies[-1] - self.scfenergy) < self.scfenergy_tolerance
 
     @skipForLogfile("FChk/basicQChem5.4", "Q-Chem doesn't print SCF energy to fchk")
     @skipForParser("xTB", "Not implemented yet")

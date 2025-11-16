@@ -35,3 +35,37 @@ except ImportError:
 # compatible, but may sometimes change when code is moved around.
 ccopen = io.ccopen
 ccwrite = io.ccwrite
+
+
+def parse(filename, *args, **kwargs):
+    """Parse a computational chemistry output file.
+
+    This is a convenience function that combines ccopen() and parse() into
+    a single call for simpler usage.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the computational chemistry output file to parse
+    *args, **kwargs
+        Additional arguments passed to ccopen()
+
+    Returns
+    -------
+    ccData or None
+        Parsed data object, or None if parsing failed
+
+    Examples
+    --------
+    >>> import cclib
+    >>> data = cclib.parse("water.out")
+    >>> print(data.scfenergies)
+
+    This is equivalent to:
+    >>> parser = cclib.ccopen("water.out")
+    >>> data = parser.parse()
+    """
+    parser = ccopen(filename, *args, **kwargs)
+    if parser is None:
+        return None
+    return parser.parse()

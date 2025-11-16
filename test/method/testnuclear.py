@@ -65,7 +65,6 @@ class NuclearTest:
             output = inputfile.read()
         line = re.search("Nuclear Repulsion Energy = .* hartrees", output).group()
         nre = float(line.split()[4])
-        nre = utils.convertor(nre, "hartree", "eV")
         assert nuclear.repulsion_energy(atomcoords_index=0) == pytest.approx(nre)
 
     def test_center_of_mass_dalton(self) -> None:

@@ -211,27 +211,13 @@ class Logfile(ABC):
             if attr not in _nodelete:
                 self.__delattr__(attr)
 
-        # Convert from atomic units to convenience units.
-        for attr in ("ccenergies", "dispersionenergies", "mpenergies", "scfenergies"):
-            if hasattr(data, attr):
-                setattr(data, attr, utils.convertor(getattr(data, attr), "hartree", "eV"))
+        # Convert from atomic units to convenience units for spectroscopic properties.
+        # Note: Energy attributes (scfenergies, ccenergies, mpenergies, etc.) are now
+        # kept in atomic units (hartree) for consistency. Use data.convert() method
+        # to convert to other units as needed.
         for attr in ("etenergies",):
             if hasattr(data, attr):
                 setattr(data, attr, utils.convertor(getattr(data, attr), "hartree", "wavenumber"))
-        for attr in ("scanenergies",):
-            if hasattr(data, attr):
-                setattr(
-                    data,
-                    attr,
-                    utils.convertor(numpy.asarray(getattr(data, attr)), "hartree", "eV").tolist(),
-                )
-        for attr in ("moenergies",):
-            if hasattr(data, attr):
-                setattr(
-                    data,
-                    attr,
-                    [utils.convertor(elem, "hartree", "eV") for elem in getattr(data, attr)],
-                )
 
         # Perform final checks on values of attributes.
         data.check_values(logger=self.logger)

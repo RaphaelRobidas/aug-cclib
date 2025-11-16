@@ -28,10 +28,10 @@ class ccData:
         atommasses -- atom masses (array[1], daltons)
         atomnos -- atomic numbers (array[1])
         atomspins -- atomic spin densities (dict of arrays[1])
-        ccenergies -- molecular energies with Coupled-Cluster corrections (array[2], eV)
+        ccenergies -- molecular energies with Coupled-Cluster corrections (array[2], hartree)
         charge -- net charge of the system (integer)
         coreelectrons -- number of core electrons in atom pseudopotentials (array[1])
-        dispersionenergies -- dispersion energy corrections (array[1], eV)
+        dispersionenergies -- dispersion energy corrections (array[1], hartree)
         enthalpy -- sum of electronic and thermal enthalpies (float, hartree/particle)
         entropy -- entropy (float, hartree/(particle*kelvin))
         etenergies -- energies of electronic transitions (array[1], 1/cm)
@@ -55,10 +55,10 @@ class ccData:
         homos -- molecular orbital indices of HOMO(s) (array[1])
         metadata -- various metadata about the package and computation (dict)
         mocoeffs -- molecular orbital coefficients (list of arrays[2])
-        moenergies -- molecular orbital energies (list of arrays[1], eV)
+        moenergies -- molecular orbital energies (list of arrays[1], hartree)
         moments -- molecular multipole moments (list of arrays[], a.u.)
         mosyms -- orbital symmetries (list of lists)
-        mpenergies -- molecular electronic energies with Møller-Plesset corrections (array[2], eV)
+        mpenergies -- molecular electronic energies with Møller-Plesset corrections (array[2], hartree)
         mult -- multiplicity of the system (integer)
         natom -- number of atoms (integer)
         nbasis -- number of basis functions (integer)
@@ -75,10 +75,15 @@ class ccData:
         pressure -- pressure used for Thermochemistry (float, atm)
         rotconsts -- rotational constants (array[2], GHz)
         scancoords -- geometries of each scan step (array[3], angstroms)
-        scanenergies -- energies of potential energy surface (list)
+        scanenergies -- energies of potential energy surface (list, hartree)
         scannames -- names of variables scanned (list of strings)
         scanparm -- values of parameters in potential energy surface (list of tuples)
-        scfenergies -- molecular electronic energies after SCF (Hartree-Fock, DFT) (array[1], eV)
+        scfenergies -- reference electronic energies from HF or DFT calculations (array[1], hartree)
+                       NOTE: For post-HF methods (MP2, CCSD, etc.), this contains the reference
+                       HF/DFT energy, NOT the correlated energy. Use mpenergies/ccenergies for
+                       correlated energies, or use the .electronicenergies property for automatic
+                       selection of the best available energy. For clearer naming, use the
+                       .referenceenergies property which is an alias for scfenergies.
         scftargets -- targets for convergence of the SCF (array[2])
         scfvalues -- current values for convergence of the SCF (list of arrays[2])
         temperature -- temperature used for Thermochemistry (float, kelvin)
@@ -220,6 +225,205 @@ class ccData:
 
         if attributes:
             self.setattributes(attributes)
+
+    def __getattribute__(self, name: str) -> Any:
+        """Override attribute access to provide helpful error messages.
+
+        When accessing an attribute that doesn't exist but is a known cclib
+        attribute, provide a helpful message indicating the attribute was
+        not parsed from the file.
+        """
+        # Use object.__getattribute__ to avoid infinite recursion
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            # Check if this is a known cclib attribute
+            _attributes = object.__getattribute__(self, '_attributes')
+            if name in _attributes:
+                raise AttributeError(
+                    f"'{type(self).__name__}' object does not have attribute '{name}'. "
+                    f"This attribute was not parsed from the output file. "
+                    f"This usually means the calculation did not produce this property, "
+                    f"or it is not supported by the parser for this QM package. "
+                    f"Use has('{name}') to check if an attribute is available before accessing it."
+                )
+            else:
+                # Not a known cclib attribute, raise normal AttributeError
+                raise AttributeError(
+                    f"'{type(self).__name__}' object has no attribute '{name}'"
+                )
+
+    def has(self, name: str) -> bool:
+        """Check if an attribute is available in the parsed data.
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute to check
+
+        Returns
+        -------
+        bool
+            True if the attribute exists and has been set, False otherwise
+
+        Examples
+        --------
+        >>> import cclib
+        >>> data = cclib.parse("water.out")
+        >>> if data.has('vibfreqs'):
+        ...     print(f"Found {len(data.vibfreqs)} vibrational frequencies")
+        ... else:
+        ...     print("No vibrational frequencies available")
+        """
+        return hasattr(self, name)
+
+    def convert(self, attribute: str, target_unit: str):
+        """Convert an attribute to a different unit.
+
+        Parameters
+        ----------
+        attribute : str
+            Name of the attribute to convert
+        target_unit : str
+            Target unit to convert to. Supported conversions:
+            - Energy: "eV", "hartree", "kcal/mol", "kJ/mol", "wavenumber"
+            - Length: "angstrom", "bohr"
+            - Dipole moment: "Debye", "ebohr"
+            - Time: "fs", "time_au"
+
+        Returns
+        -------
+        converted value
+            The attribute value converted to the target unit
+
+        Examples
+        --------
+        >>> import cclib
+        >>> data = cclib.parse("water.out")
+        >>> # Get SCF energies in eV instead of default hartree
+        >>> scf_ev = data.convert('scfenergies', 'eV')
+        >>> # Get MO energies in kcal/mol
+        >>> mo_kcal = data.convert('moenergies', 'kcal/mol')
+
+        Notes
+        -----
+        This method does not modify the original attribute, it returns a
+        converted copy. Energy attributes are stored in hartree by default.
+        """
+        from cclib.parser import utils
+
+        if not self.has(attribute):
+            raise AttributeError(
+                f"Attribute '{attribute}' not found. Use has('{attribute}') to check availability."
+            )
+
+        value = getattr(self, attribute)
+
+        # Determine source unit based on attribute type
+        # Energy attributes are in hartree
+        energy_attrs = {
+            "scfenergies", "ccenergies", "mpenergies", "dispersionenergies",
+            "moenergies", "scanenergies", "enthalpy", "freeenergy", "zpve"
+        }
+
+        # Special case: etenergies are already in wavenumbers
+        if attribute == "etenergies":
+            source_unit = "wavenumber"
+        elif attribute in energy_attrs:
+            source_unit = "hartree"
+        elif attribute == "atomcoords" or attribute == "scancoords" or attribute == "vibdisps":
+            source_unit = "angstrom"
+        elif attribute == "time":
+            source_unit = "fs"
+        elif attribute in ("etdips", "etveldips", "etmagdips"):
+            source_unit = "ebohr"
+        else:
+            raise ValueError(
+                f"Attribute '{attribute}' does not support unit conversion. "
+                f"Only energy, length, time, and dipole attributes can be converted."
+            )
+
+        # Convert the value - handle different data structures
+        if isinstance(value, numpy.ndarray):
+            return utils.convertor(value, source_unit, target_unit)
+        elif isinstance(value, list):
+            # Handle list of arrays (like moenergies)
+            if len(value) > 0 and isinstance(value[0], numpy.ndarray):
+                return [utils.convertor(elem, source_unit, target_unit) for elem in value]
+            # Handle simple lists (like scanenergies)
+            else:
+                return utils.convertor(numpy.array(value), source_unit, target_unit).tolist()
+        elif isinstance(value, (int, float)):
+            return utils.convertor(value, source_unit, target_unit)
+        else:
+            raise TypeError(
+                f"Cannot convert attribute '{attribute}' of type {type(value).__name__}"
+            )
+
+    @property
+    def referenceenergies(self):
+        """Reference electronic energies (HF or DFT) before correlation corrections.
+
+        This is an alias for scfenergies that clarifies the meaning: for post-HF
+        methods (MP2, CCSD, etc.), this contains the reference HF or DFT energy,
+        not the final correlated energy.
+
+        Returns
+        -------
+        array
+            Reference energies in hartree
+
+        Notes
+        -----
+        - For HF-only calculations: Final HF energy
+        - For DFT-only calculations: Final DFT energy
+        - For MP2 calculations: Reference HF/DFT energy (not MP2 energy)
+        - For CCSD calculations: Reference HF/DFT energy (not CCSD energy)
+
+        Use mpenergies or ccenergies to get correlated method energies.
+        """
+        if self.has('scfenergies'):
+            return self.scfenergies
+        return None
+
+    @property
+    def electronicenergies(self):
+        """Best available electronic energies for the calculation.
+
+        Automatically selects the most appropriate energy based on the calculation type:
+        - For CC methods: returns ccenergies
+        - For MP methods: returns mpenergies
+        - Otherwise: returns scfenergies (HF/DFT reference energy)
+
+        Returns
+        -------
+        array or list
+            Electronic energies in hartree
+
+        Examples
+        --------
+        >>> import cclib
+        >>> # For an MP2 calculation
+        >>> data = cclib.parse("water_mp2.out")
+        >>> data.electronicenergies  # Returns MP2 energies
+        >>> data.referenceenergies    # Returns HF reference energies
+        >>>
+        >>> # For a DFT calculation
+        >>> data = cclib.parse("water_dft.out")
+        >>> data.electronicenergies  # Returns DFT energies
+        >>> data.referenceenergies    # Returns same DFT energies
+        """
+        # Prefer the highest level of theory available
+        if self.has('ccenergies'):
+            return self.ccenergies
+        elif self.has('mpenergies'):
+            # mpenergies is 2D array, return the highest order
+            if isinstance(self.mpenergies, numpy.ndarray) and self.mpenergies.ndim == 2:
+                return self.mpenergies[:, -1]
+            return self.mpenergies
+        elif self.has('scfenergies'):
+            return self.scfenergies
+        return None
 
     def listify(self) -> None:
         """Converts all attributes that are arrays or lists/dicts of arrays to lists."""

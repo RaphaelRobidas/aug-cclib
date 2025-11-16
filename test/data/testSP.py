@@ -287,9 +287,7 @@ class GenericSPTest:
     @skipForParser("NBO", "attribute not implemented in this version")
     def testscfenergy(self, data) -> None:
         """Is the SCF energy within the target?"""
-        assert abs(
-            data.scfenergies[-1] - utils.convertor(self.scfenergy, "hartree", "eV")
-        ) < utils.convertor(self.scfenergy_delta, "hartree", "eV")
+        assert abs(data.scfenergies[-1] - self.scfenergy) < self.scfenergy_delta
 
     @skipForParser("CFOUR", "The parser is still being developed so we skip this test")
     @skipForParser("FChk", "Formatted Checkpoint files do not have a section for SCF convergence")
@@ -329,9 +327,7 @@ class GenericSPTest:
     @skipForParser("Serenity", "Serenity needs it's own reference here")  # TODO
     def testfirstmoenergy(self, data) -> None:
         """Is the lowest energy molecular orbital within the target?"""
-        assert abs(
-            data.moenergies[0][0] - utils.convertor(self.moenergy, "hartree", "eV")
-        ) < utils.convertor(self.moenergy_delta, "hartree", "eV")
+        assert abs(data.moenergies[0][0] - self.moenergy) < self.moenergy_delta
 
     @skipForParser("DALTON", "mocoeffs not implemented yet")
     @skipForLogfile(
@@ -843,8 +839,8 @@ class GenericDispersionTest:
         """Is the dispersion energy parsed correctly?"""
         assert len(data.dispersionenergies) == 1
         assert abs(
-            data.dispersionenergies[0] - utils.convertor(self.dispersionenergy, "hartree", "eV")
-        ) < utils.convertor(self.dispersionenergy_delta, "hartree", "eV")
+            data.dispersionenergies[0] - self.dispersionenergy
+        ) < self.dispersionenergy_delta
 
 
 class FireflyDispersionTest(GenericDispersionTest):

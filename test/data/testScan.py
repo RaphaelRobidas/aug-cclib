@@ -30,9 +30,7 @@ class GenericUnrelaxedScanTest:
         assert isinstance(data.scanenergies, list)
 
         # This checks the order of magnitude, and unit conversion if nothing else.
-        numpy.testing.assert_array_less(
-            numpy.array(data.scanenergies), cclib.parser.utils.convertor(-378, "hartree", "eV")
-        )
+        numpy.testing.assert_array_less(numpy.array(data.scanenergies), -378)
 
     @skipForParser("CFOUR", "The parser is still being developed so we skip this test")
     def testscanparm(self, data) -> None:

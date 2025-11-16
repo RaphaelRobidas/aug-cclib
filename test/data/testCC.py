@@ -35,9 +35,7 @@ class GenericCC2Test(GenericCCTest):
         e_scf = data.scfenergies[0]
         e_cc = data.ccenergies[0]
         e_corr = e_cc - e_scf
-        assert pytest.approx(e_corr, rel=self.rel_thresh) == utils.convertor(
-            self.corr_energy, "hartree", "eV"
-        )
+        assert pytest.approx(e_corr, rel=self.rel_thresh) == self.corr_energy
 
 
 class GenericCCDTest(GenericCCTest):
@@ -49,9 +47,7 @@ class GenericCCDTest(GenericCCTest):
         e_scf = data.scfenergies[0]
         e_cc = data.ccenergies[0]
         e_corr = e_cc - e_scf
-        assert pytest.approx(e_corr, rel=self.rel_thresh) == utils.convertor(
-            self.corr_energy, "hartree", "eV"
-        )
+        assert pytest.approx(e_corr, rel=self.rel_thresh) == self.corr_energy
 
 
 class GenericCCSDTest(GenericCCTest):
@@ -63,9 +59,7 @@ class GenericCCSDTest(GenericCCTest):
         e_scf = data.scfenergies[0]
         e_cc = data.ccenergies[0]
         e_corr = e_cc - e_scf
-        assert pytest.approx(e_corr, rel=self.rel_thresh) == utils.convertor(
-            self.corr_energy, "hartree", "eV"
-        )
+        assert pytest.approx(e_corr, rel=self.rel_thresh) == self.corr_energy
 
 
 class GenericCCSDPTTest(GenericCCTest):
@@ -77,9 +71,7 @@ class GenericCCSDPTTest(GenericCCTest):
         e_scf = data.scfenergies[0]
         e_cc = data.ccenergies[0]
         e_corr = e_cc - e_scf
-        assert pytest.approx(e_corr, rel=self.rel_thresh) == utils.convertor(
-            self.corr_energy, "hartree", "eV"
-        )
+        assert pytest.approx(e_corr, rel=self.rel_thresh) == self.corr_energy
 
 
 class CFOURCC2Test(GenericCC2Test):
