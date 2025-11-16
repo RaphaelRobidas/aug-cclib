@@ -238,7 +238,6 @@ class GenericIRTest:
     @skipForParser("Molpro", "not implemented yet")
     @skipForParser("GAMESSUK", "not implemented yet")
     @skipForParser("Turbomole", "not implemented yet")
-    @skipForParser("xTB", "not implemented yet")
     def testatommasses(self, data) -> None:
         """Do the atom masses sum up to the molecular mass?"""
         mm = 1000 * sum(data.atommasses)
@@ -431,10 +430,27 @@ class XTBIRTest(GenericIRTest):
     freeenergy = -26.310999637373
     max_reduced_mass = 11.43
 
+    # XTB uses its own atomic mass table, so molecular mass differs
+    molecularmass = 130186.77
+    molecularmass_thresh = 0.25
+
     @pytest.fixture
     def numvib(self, data) -> int:
         """Initialize the number of vibrational frequencies on a per molecule basis"""
         return 3 * len(data.atomnos)
+
+    def testvibramans(self, data, numvib) -> None:
+        """Is the length of vibramans correct?"""
+        assert hasattr(data, "vibramans")
+        assert len(data.vibramans) == numvib
+
+    def testimaginaryfreqs(self, data) -> None:
+        """Is the imaginary frequency count in metadata correct?"""
+        assert hasattr(data, "metadata")
+        assert "imaginary_freqs" in data.metadata
+        # For dvb_ir.out, this should be 0 (energy minimum)
+        assert data.metadata["imaginary_freqs"] == 0
+        assert isinstance(data.metadata["imaginary_freqs"], int)
 
 
 class GenericIRimgTest:

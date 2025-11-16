@@ -14,6 +14,35 @@ from cclib.parser.utils import convertor
 import numpy as np
 import scipy.constants as spc
 
+# Atomic masses for XTB (from XTB source code v6.5.1)
+# https://github.com/grimme-lab/xtb/blob/579679afd673b20e6dc6e238ecc19db70941731f/src/param/atomicmass.f90#L37
+XTB_ATOMNO_TO_ATOMMASS = [
+    1.00794075, 4.00260193, 6.94003660, 9.01218307, 10.81102805,
+    12.01073590, 14.00670321, 15.99940492, 18.99840316, 20.18004638,
+    22.98976928, 24.30505162, 26.98153853, 28.08549871, 30.97376200,
+    32.06478741, 35.45293758, 39.94779856, 39.09830091, 40.07802251,
+    44.95590828, 47.86674496, 50.94146504, 51.99613176, 54.93804391,
+    55.84514443, 58.93319429, 58.69334711, 63.54603995, 65.37778253,
+    69.72306607, 72.62755016, 74.92159457, 78.95938856, 79.90352778,
+    83.79800000, 85.46766360, 87.61664447, 88.90584030, 91.22364160,
+    92.90637300, 95.95978854, 97.90721240, 101.06494014, 102.90549800,
+    106.41532751, 107.86814963, 112.41155782, 114.81808663, 118.71011259,
+    121.75978367, 127.60312648, 126.90447179, 131.29276164, 132.90545196,
+    137.32689163, 138.90546887, 140.11573074, 140.90765133, 144.24159603,
+    144.91275590, 150.36635571, 151.96437813, 157.25213065, 158.92535475,
+    162.49947282, 164.93032880, 167.25908265, 168.93421790, 173.05415017,
+    174.96681496, 178.48497872, 180.94787564, 183.84177755, 186.20670455,
+    190.22485963, 192.21605165, 195.08445686, 196.96656879, 200.59916703,
+    204.38341284, 207.21690806, 208.98039910, 208.98243082, 209.98714790,
+    222.01757820, 223.01973600, 226.02541030, 227.02775230, 232.03805580,
+    231.03588420, 238.02891046, 237.04817360, 244.06420530, 243.06138130,
+    247.07035410, 247.07030730, 251.07958860, 252.08298000, 257.09510610,
+    258.09843150, 259.10100000, 262.10961000, 267.12179000, 268.12567000,
+    271.13393000, 272.13826000, 270.13429000, 276.15159000, 281.16451000,
+    280.16514000, 285.17712000, 284.17873000, 289.19042000, 288.19274000,
+    293.20449000, 292.20746000, 294.21392000,
+]
+
 
 class XTB(logfileparser.Logfile):
     """An output parser for the xTB code"""
@@ -39,7 +68,16 @@ class XTB(logfileparser.Logfile):
 
     def after_parsing(self) -> None:
         """Actions after parsing"""
-        pass
+        # Set atommasses based on atomnos using XTB's atomic mass table
+        if hasattr(self, "atomnos") and not hasattr(self, "atommasses"):
+            try:
+                atommasses = np.array(
+                    [XTB_ATOMNO_TO_ATOMMASS[atomno - 1] for atomno in self.atomnos]
+                )
+                self.set_attribute("atommasses", atommasses)
+            except (IndexError, ValueError):
+                # If atomno is out of range, skip setting atommasses
+                pass
 
     def extract(self, inputfile: FileWrapper, line: str) -> None:
         if self.metadata.get("success") is None:
@@ -204,6 +242,11 @@ class XTB(logfileparser.Logfile):
             self.metadata["symmetry_detected"] = symmetry
             self.metadata["symmetry_used"] = symmetry
 
+        # Parse number of imaginary frequencies
+        nimag = _extract_imaginary_freq_count(line)
+        if nimag is not None:
+            self.metadata["imaginary_freqs"] = nimag
+
         if _is_freq_printout(line):
             next(inputfile)
             next(inputfile)
@@ -211,6 +254,7 @@ class XTB(logfileparser.Logfile):
             vibfreqs = []
             vibrmasses = []
             vibirs = []
+            vibramans = []
 
             while "reduced masses" not in line:
                 freq_vals = _extract_frequencies(line)
@@ -232,12 +276,22 @@ class XTB(logfileparser.Logfile):
                     vibirs.extend(vibir)
                 line = next(inputfile)
 
+            # Parse Raman intensities
+            line = next(inputfile)
+            while line.strip() and "output can be read" not in line:
+                raman_vals = _extract_raman_intensities(line)
+                if raman_vals is not None:
+                    vibramans.extend(raman_vals)
+                line = next(inputfile)
+
             if vibfreqs:
                 self.set_attribute("vibfreqs", np.array(vibfreqs))
             if vibrmasses:
                 self.set_attribute("vibrmasses", np.array(vibrmasses))
             if vibirs:
                 self.set_attribute("vibirs", np.array(vibirs))
+            if vibramans:
+                self.set_attribute("vibramans", np.array(vibramans))
 
         zpve = _extract_zpve(line)
         if zpve is not None:
@@ -677,6 +731,25 @@ def _extract_symmetry(line: str) -> Optional[str]:
     return line.split()[2] if ":" in line and "symmetry" in line else None
 
 
+def _extract_imaginary_freq_count(line: str) -> Optional[int]:
+    """
+    Extract the number of imaginary frequencies from the thermodynamics SETUP section.
+
+        ...................................................
+        :                      SETUP                      :
+        :.................................................:
+        :  # frequencies                          54      :
+        :  # imaginary freq.                       0      :
+        :  linear?                             false      :
+
+    This is useful for identifying transition states (should have exactly 1 imaginary frequency)
+    or confirming minima (should have 0 imaginary frequencies).
+    """
+    if ":  # imaginary freq." in line:
+        return int(line.split()[-2])
+    return None
+
+
 def _extract_enthalpy(line: str) -> Optional[float]:
     """
     Extract total enthalpy.
@@ -755,6 +828,21 @@ def _extract_reduced_masses(line: str) -> Optional[List[float]]:
 def _extract_ir_intensities(line: str) -> Optional[List[float]]:
     """
     Extract the IR intensities. See summary above.
+    """
+    match = re.findall(r"\d+\.\d+", line)
+    return [float(val) for val in match] if match else None
+
+
+def _extract_raman_intensities(line: str) -> Optional[List[float]]:
+    """
+    Extract the Raman intensities/activities.
+
+    Example from frequency printout:
+     Raman intensities (amu)
+       1:  0.00   2:  0.00   3:  0.00   4:  0.00   5:  0.00   6:  0.00   7:  0.00   8:  0.00
+       9:  0.20  10:  0.23  11:  0.00  12:  0.00  13:  0.11  14:  0.00  15:  3.78  16:  0.93
+
+    Note: XTB Raman intensities are in units of amu (atomic mass units).
     """
     match = re.findall(r"\d+\.\d+", line)
     return [float(val) for val in match] if match else None
