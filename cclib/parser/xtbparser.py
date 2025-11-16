@@ -236,6 +236,11 @@ class XTB(logfileparser.Logfile):
         if rotconsts is not None:
             self.append_attribute("rotconsts", rotconsts)
 
+        # Parse dispersion energy from SUMMARY section
+        dispersion_energy = _extract_dispersion_energy(line)
+        if dispersion_energy is not None:
+            self.append_attribute("dispersionenergies", dispersion_energy)
+
         final_energy = _extract_final_energy(line)
         if final_energy is not None:
             if hasattr(self, "scfenergies"):
@@ -638,6 +643,36 @@ def _extract_rotational_constants(line: str) -> Optional[np.ndarray]:
         _GIGA = 1000000000.0
         ghz2invcm = _GIGA * _CENTI / spc.c
         return np.array([float(x) for x in line_split[-3:]]) / ghz2invcm
+
+
+def _extract_dispersion_energy(line: str) -> Optional[float]:
+    """
+    Extract the dispersion energy from the SUMMARY section.
+
+    Example from SUMMARY output:
+        :::::::::::::::::::::::::::::::::::::::::::::::::::::
+        ::                     SUMMARY                     ::
+        :::::::::::::::::::::::::::::::::::::::::::::::::::::
+        :: total energy             -26.425939358406 Eh    ::
+        :: gradient norm              0.088050609976 Eh/a0 ::
+        :: HOMO-LUMO gap              3.331862576356 eV    ::
+        ::.................................................::
+        :: SCC energy               -26.904528263932 Eh    ::
+        :: -> isotropic ES            0.001896100208 Eh    ::
+        :: -> anisotropic ES          0.005789527134 Eh    ::
+        :: -> anisotropic XC          0.022968381942 Eh    ::
+        :: -> dispersion             -0.016488579108 Eh    ::
+        :: repulsion energy           0.478639495328 Eh    ::
+
+    Units: Eh (hartree)
+    Note: This is the D4 dispersion correction energy
+    """
+    if ":: -> dispersion" in line:
+        parts = line.split()
+        # Format: ":: -> dispersion    -0.016488579108 Eh    ::"
+        # The energy is the second-to-last element (before "Eh")
+        return float(parts[-3])
+    return None
 
 
 def _extract_wall_time(line: str) -> Optional[List[timedelta]]:

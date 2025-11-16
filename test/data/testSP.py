@@ -877,6 +877,43 @@ class XTBSPTest(GenericSPTest):
         assert numpy.all(data.homos >= 0)
         assert numpy.all(data.homos < data.nmo)
 
+    def testdispersionenergies(self, data) -> None:
+        """Is the D4 dispersion energy parsed correctly with proper units?"""
+        assert hasattr(data, "dispersionenergies")
+        assert len(data.dispersionenergies) == 1
+        # Reference value from dvb_sp.out: -0.016488579108 Eh
+        assert pytest.approx(data.dispersionenergies[0], abs=1e-8) == -0.016488579108
+        # Dispersion energy should be negative (attractive)
+        assert data.dispersionenergies[0] < 0
+        # Units: hartree (Eh)
+        assert isinstance(data.dispersionenergies[0], (float, numpy.floating))
+
+    def testmetadata_timings(self, data) -> None:
+        """Are wall time and CPU time parsed correctly?"""
+        assert hasattr(data, "metadata")
+        assert "wall_time" in data.metadata
+        assert "cpu_time" in data.metadata
+
+        # Both should be lists of timedelta objects
+        import datetime
+        assert isinstance(data.metadata["wall_time"], list)
+        assert isinstance(data.metadata["cpu_time"], list)
+        assert len(data.metadata["wall_time"]) >= 1
+        assert len(data.metadata["cpu_time"]) >= 1
+        assert isinstance(data.metadata["wall_time"][0], datetime.timedelta)
+        assert isinstance(data.metadata["cpu_time"][0], datetime.timedelta)
+
+        # CPU time should be >= wall time (for parallel execution)
+        # For dvb_sp.out: wall=0.595s, cpu=11.848s (19.9x speedup with 20 threads)
+        wall_seconds = data.metadata["wall_time"][0].total_seconds()
+        cpu_seconds = data.metadata["cpu_time"][0].total_seconds()
+        assert cpu_seconds >= wall_seconds, "CPU time should be >= wall time"
+
+        # Check approximate reference values (with tolerance for different systems)
+        # Reference: wall-time: 0.595 sec (but allow wide tolerance)
+        assert 0.1 < wall_seconds < 10.0, f"Wall time {wall_seconds}s seems unreasonable"
+        assert 0.1 < cpu_seconds < 100.0, f"CPU time {cpu_seconds}s seems unreasonable"
+
 
 class GenericDispersionTest:
     """Generic single-geometry dispersion correction unittest"""

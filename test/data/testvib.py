@@ -496,6 +496,33 @@ class XTBIRTest(GenericIRTest):
         assert np.all((c_masses > 11.0) & (c_masses < 13.0))
         assert np.all((h_masses > 0.9) & (h_masses < 1.1))
 
+    def testdispersionenergies(self, data) -> None:
+        """Is the D4 dispersion energy parsed correctly?"""
+        assert hasattr(data, "dispersionenergies")
+        assert len(data.dispersionenergies) == 1
+        # Reference value from dvb_ir.out: -0.016602489647 Eh
+        assert pytest.approx(data.dispersionenergies[0], abs=1e-8) == -0.016602489647
+        # Dispersion energy should be negative (attractive)
+        assert data.dispersionenergies[0] < 0
+
+    def testentropy(self, data) -> None:
+        """Is the entropy parsed correctly with proper value and units?"""
+        assert hasattr(data, "entropy")
+        # Reference value from dvb_ir.out: 0.0001493609321651285 Eh/K
+        assert pytest.approx(data.entropy, abs=1e-10) == 0.0001493609321651285
+        # Entropy should be positive
+        assert data.entropy > 0
+        # Units: Eh/K (hartree per Kelvin)
+        assert isinstance(data.entropy, (float, np.floating))
+
+    def testtemperature(self, data) -> None:
+        """Is the temperature parsed correctly?"""
+        assert hasattr(data, "temperature")
+        # Reference value: 298.15 K (standard temperature)
+        assert pytest.approx(data.temperature, abs=0.01) == 298.15
+        # Temperature should be positive and reasonable
+        assert 200 < data.temperature < 400
+
 
 class GenericIRimgTest:
     """Generic imaginary vibrational frequency unittest"""
