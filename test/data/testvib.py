@@ -8,6 +8,7 @@
 import numpy as np
 import pytest
 from skip import skipForLogfile, skipForParser
+from test.constants import XTB_ATOMNO_TO_ATOMMASS
 
 
 class GenericIRTest:
@@ -440,17 +441,60 @@ class XTBIRTest(GenericIRTest):
         return 3 * len(data.atomnos)
 
     def testvibramans(self, data, numvib) -> None:
-        """Is the length of vibramans correct?"""
+        """Are the Raman intensities parsed correctly with proper units?"""
         assert hasattr(data, "vibramans")
         assert len(data.vibramans) == numvib
+
+        # For this symmetric DVB molecule, all Raman intensities are zero
+        # This tests that we're parsing the correct section and getting proper values
+        assert np.allclose(data.vibramans, 0.0, atol=1e-10)
+
+        # Verify it's a numpy array with the right dtype
+        assert isinstance(data.vibramans, np.ndarray)
+        assert data.vibramans.dtype in (np.float64, np.float32)
+
+        # Raman intensities should be non-negative (in amu units)
+        assert np.all(data.vibramans >= 0.0)
 
     def testimaginaryfreqs(self, data) -> None:
         """Is the imaginary frequency count in metadata correct?"""
         assert hasattr(data, "metadata")
         assert "imaginary_freqs" in data.metadata
-        # For dvb_ir.out, this should be 0 (energy minimum)
+
+        # For dvb_ir.out, this should be exactly 0 (confirmed energy minimum)
         assert data.metadata["imaginary_freqs"] == 0
         assert isinstance(data.metadata["imaginary_freqs"], int)
+
+        # imaginary_freqs should be non-negative
+        assert data.metadata["imaginary_freqs"] >= 0
+
+    def testatommasses_values(self, data) -> None:
+        """Are the atomic masses correct for XTB's mass table?"""
+        assert hasattr(data, "atommasses")
+        assert hasattr(data, "atomnos")
+        assert len(data.atommasses) == len(data.atomnos)
+
+        # DVB molecule: C10H10 (10 carbons, 10 hydrogens)
+        # Check that each atomic mass matches XTB's mass table
+        for atomno, mass in zip(data.atomnos, data.atommasses):
+            expected_mass = XTB_ATOMNO_TO_ATOMMASS[atomno - 1]
+            assert pytest.approx(mass, abs=1e-8) == expected_mass
+
+        # Specifically test first C and last H
+        # First atom is C (Z=6): mass should be 12.01073590
+        assert data.atomnos[0] == 6
+        assert pytest.approx(data.atommasses[0], abs=1e-8) == 12.01073590
+
+        # Last atom is H (Z=1): mass should be 1.00794075
+        assert data.atomnos[-1] == 1
+        assert pytest.approx(data.atommasses[-1], abs=1e-8) == 1.00794075
+
+        # Verify units: masses should be in daltons (amu)
+        # Carbon mass should be around 12, hydrogen around 1
+        c_masses = data.atommasses[data.atomnos == 6]
+        h_masses = data.atommasses[data.atomnos == 1]
+        assert np.all((c_masses > 11.0) & (c_masses < 13.0))
+        assert np.all((h_masses > 0.9) & (h_masses < 1.1))
 
 
 class GenericIRimgTest:
