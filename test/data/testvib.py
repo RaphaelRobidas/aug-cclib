@@ -395,37 +395,43 @@ class OrcaIRTest(GenericIRTest):
         assert data.temperature > 0
 
     def testentropy_exact(self, data) -> None:
-        """Is the entropy parsed correctly?"""
+        """Is the entropy parsed with exact reference value?"""
         assert hasattr(data, "entropy")
-        # Note: Values differ between ORCA 5.0 and 6.0
-        # ORCA 5.0: 0.00014384698977024988 Eh/K
-        # ORCA 6.0: 0.00014392205265805803 Eh/K
-        # Entropy should be positive and in reasonable range for this molecule
+        # Reference values from dvb_ir.out
+        if "ORCA5.0" in data.filenames[0]:
+            # ORCA 5.0: 0.00014384698977024988 Eh/K
+            assert pytest.approx(data.entropy, abs=1e-10) == 0.00014384698977024988
+        else:
+            # ORCA 6.0: 0.00014392205265805803 Eh/K
+            assert pytest.approx(data.entropy, abs=1e-10) == 0.00014392205265805803
         assert data.entropy > 0
-        assert 0.0001 < data.entropy < 0.001  # Eh/K
 
     def testenthalpy_exact(self, data) -> None:
-        """Is the enthalpy parsed correctly?"""
+        """Is the enthalpy parsed with exact reference value?"""
         assert hasattr(data, "enthalpy")
-        # Note: Values differ between ORCA 5.0 and 6.0
-        # ORCA 5.0: -381.86823907 Eh
-        # ORCA 6.0: -381.86823509 Eh
-        # Enthalpy should be negative for stable molecules
+        # Reference values from dvb_ir.out
+        if "ORCA5.0" in data.filenames[0]:
+            # ORCA 5.0: -381.86823907 Eh
+            assert pytest.approx(data.enthalpy, abs=1e-6) == -381.86823907
+        else:
+            # ORCA 6.0: -381.86823509 Eh
+            assert pytest.approx(data.enthalpy, abs=1e-6) == -381.86823509
         assert data.enthalpy < 0
-        assert -382 < data.enthalpy < -381  # Eh
 
     def testfreeenergy_exact(self, data) -> None:
-        """Is the free energy parsed correctly?"""
+        """Is the free energy parsed with exact reference value?"""
         assert hasattr(data, "freeenergy")
-        # Note: Values differ between ORCA 5.0 and 6.0
-        # ORCA 5.0: -381.91112705 Eh
-        # ORCA 6.0: -381.91114546 Eh
-        # Free energy should be negative for stable molecules
+        # Reference values from dvb_ir.out
+        if "ORCA5.0" in data.filenames[0]:
+            # ORCA 5.0: -381.91112705 Eh
+            assert pytest.approx(data.freeenergy, abs=1e-6) == -381.91112705
+        else:
+            # ORCA 6.0: -381.91114546 Eh
+            assert pytest.approx(data.freeenergy, abs=1e-6) == -381.91114546
         assert data.freeenergy < 0
-        assert -382 < data.freeenergy < -381  # Eh
 
     def testmetadata_timings(self, data) -> None:
-        """Are wall time and CPU time parsed correctly?"""
+        """Are wall time and CPU time parsed with exact reference values?"""
         assert hasattr(data, "metadata")
         assert "wall_time" in data.metadata
         assert "cpu_time" in data.metadata
@@ -445,12 +451,17 @@ class OrcaIRTest(GenericIRTest):
         # CPU time should be >= wall time (for parallel execution)
         assert cpu_seconds >= wall_seconds
 
-        # Note: Timing values differ between ORCA 5.0 and 6.0
-        # ORCA 5.0: wall=138.241s, cpu=276.482s
-        # ORCA 6.0: wall=50.462s, cpu=100.924s
-        # Times should be positive
-        assert wall_seconds > 0
-        assert cpu_seconds > 0
+        # Reference values from dvb_ir.out
+        if "ORCA5.0" in data.filenames[0]:
+            # ORCA 5.0: TOTAL RUN TIME: 0 days 0 hours 2 minutes 18 seconds 241 msec
+            # nprocs = 2, so cpu_time = wall_time * 2
+            assert pytest.approx(wall_seconds, abs=0.001) == 138.241
+            assert pytest.approx(cpu_seconds, abs=0.001) == 276.482
+        else:
+            # ORCA 6.0: TOTAL RUN TIME: 0 days 0 hours 0 minutes 50 seconds 462 msec
+            # nprocs = 4, so cpu_time = wall_time * 4
+            assert pytest.approx(wall_seconds, abs=0.001) == 50.462
+            assert pytest.approx(cpu_seconds, abs=0.001) == 201.848
 
 
 class Psi4HFIRTest(GenericIRTest):

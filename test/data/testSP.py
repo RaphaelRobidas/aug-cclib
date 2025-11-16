@@ -755,7 +755,7 @@ class OrcaSPTest(GenericSPTest):
     rotconsts = [4.614497946, 0.685205544, 0.596614430]
 
     def testmetadata_timings(self, data) -> None:
-        """Are wall time and CPU time parsed correctly?"""
+        """Are wall time and CPU time parsed with exact reference values?"""
         assert hasattr(data, "metadata")
         assert "wall_time" in data.metadata
         assert "cpu_time" in data.metadata
@@ -775,9 +775,22 @@ class OrcaSPTest(GenericSPTest):
         # CPU time should be >= wall time (for parallel execution)
         assert cpu_seconds >= wall_seconds
 
-        # Times should be positive
-        assert wall_seconds > 0
-        assert cpu_seconds > 0
+        # Reference values from ORCA output files
+        if "ORCA5.0" in data.filenames[0]:
+            # ORCA 5.0 dvb_sp.out: TOTAL RUN TIME: 0 days 0 hours 0 minutes 7 seconds 8 msec
+            # nprocs = 4, so cpu_time = wall_time * 4
+            assert pytest.approx(wall_seconds, abs=0.001) == 7.008
+            assert pytest.approx(cpu_seconds, abs=0.001) == 28.032
+        elif "dvb_sp_dft" in data.filenames[0]:
+            # ORCA 6.0 dvb_sp_dft.out: TOTAL RUN TIME: 0 days 0 hours 0 minutes 7 seconds 985 msec
+            # nprocs = 1, so cpu_time = wall_time * 1
+            assert pytest.approx(wall_seconds, abs=0.001) == 7.985
+            assert pytest.approx(cpu_seconds, abs=0.001) == 7.985
+        elif "dvb_sp_hf" in data.filenames[0]:
+            # ORCA 6.0 dvb_sp_hf.out: TOTAL RUN TIME: 0 days 0 hours 0 minutes 8 seconds 734 msec
+            # nprocs = 4, so cpu_time = wall_time * 4
+            assert pytest.approx(wall_seconds, abs=0.001) == 8.734
+            assert pytest.approx(cpu_seconds, abs=0.001) == 34.936
 
 
 class OrcaHFSPTest(OrcaSPTest, GenericHFSPTest):
