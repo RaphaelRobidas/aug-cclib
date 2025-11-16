@@ -7,6 +7,10 @@
 
 import sys
 from pathlib import Path
+import pytest
+
+# Volume tests require pyquante2 or PyQuante for wavefunction/density calculations
+pytest.importorskip("pyquante2", reason="Volume tests require pyquante2 or PyQuante")
 
 from cclib.method import volume
 from cclib.parser import Gaussian, Psi4
