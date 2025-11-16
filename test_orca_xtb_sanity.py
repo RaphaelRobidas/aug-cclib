@@ -41,13 +41,12 @@ class TestORCABasicORCA60:
         assert hasattr(data, 'scfenergies'), "No scfenergies attribute"
         assert len(data.scfenergies) == 1, f"Expected 1 SCF energy, got {len(data.scfenergies)}"
 
-        # Convert to eV for comparison (cclib stores in eV)
+        # cclib stores scfenergies in Hartree
         expected_hartree = -382.05510839256243
-        expected_ev = convertor(expected_hartree, "hartree", "eV")
 
         np.testing.assert_allclose(
-            data.scfenergies[0], expected_ev, rtol=1e-6,
-            err_msg=f"SCF energy mismatch: expected {expected_ev}, got {data.scfenergies[0]}"
+            data.scfenergies[0], expected_hartree, rtol=1e-6,
+            err_msg=f"SCF energy mismatch: expected {expected_hartree}, got {data.scfenergies[0]}"
         )
 
     def test_dvb_sp_dft_metadata(self):
@@ -372,12 +371,12 @@ class TestXTBBasicXTB661:
         Expected: -26.425939358406 Eh from raw output"""
         data = ccread(XTB_DIR / "dvb_sp" / "dvb_sp.out")
 
+        # cclib stores scfenergies in Hartree
         expected_hartree = -26.425939358406
-        expected_ev = convertor(expected_hartree, "hartree", "eV")
 
         np.testing.assert_allclose(
-            data.scfenergies[0], expected_ev, rtol=1e-6,
-            err_msg=f"XTB energy mismatch: expected {expected_ev}, got {data.scfenergies[0]}"
+            data.scfenergies[0], expected_hartree, rtol=1e-6,
+            err_msg=f"XTB energy mismatch: expected {expected_hartree}, got {data.scfenergies[0]}"
         )
 
     def test_dvb_ir_zero_point_energy(self):

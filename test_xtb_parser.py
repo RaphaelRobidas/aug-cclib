@@ -83,11 +83,10 @@ class TestXTBSinglePoint:
         assert data.scfenergies.shape == (1,), \
             f"Should have 1 SCF energy, got shape {data.scfenergies.shape}"
 
-        # Test exact value from raw output: -26.425939358406 Eh
+        # Test exact value from raw output: -26.425939358406 Eh (cclib stores in Hartree)
         expected_hartree = -26.425939358406
-        expected_ev = convertor(expected_hartree, "hartree", "eV")
         np.testing.assert_allclose(
-            data.scfenergies[0], expected_ev, rtol=1e-6,
+            data.scfenergies[0], expected_hartree, rtol=1e-6,
             err_msg=f"SCF energy mismatch"
         )
 

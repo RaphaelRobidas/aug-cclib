@@ -105,11 +105,10 @@ class TestORCASPDFT:
         assert data.scfenergies.shape == (1,), \
             f"scfenergies shape should be (1,), got {data.scfenergies.shape}"
 
-        # Test exact value from raw output
+        # Test exact value from raw output (scfenergies are stored in Hartree)
         expected_hartree = -382.05510839256243
-        expected_ev = convertor(expected_hartree, "hartree", "eV")
         np.testing.assert_allclose(
-            data.scfenergies[0], expected_ev, rtol=1e-6,
+            data.scfenergies[0], expected_hartree, rtol=1e-6,
             err_msg=f"SCF energy mismatch"
         )
 
