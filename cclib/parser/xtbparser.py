@@ -298,6 +298,35 @@ class XTB(logfileparser.Logfile):
                 line = next(inputfile)
             self.set_attribute("hessian", np.reshape(hessian, 3 * self.natom, 3 * self.natom))
 
+        # Parse nbasis and nmo from SETUP section
+        nbasis = _extract_nbasis(line)
+        if nbasis is not None:
+            self.set_attribute("nbasis", nbasis)
+            # For XTB, nmo == nbasis
+            self.set_attribute("nmo", nbasis)
+
+        # Parse dipole moment (needs special handling to get the right section)
+        if "molecular dipole:" in line:
+            # Skip to the "full:" line in the dipole section
+            next(inputfile)  # skip "x y z tot (Debye)" line
+            next(inputfile)  # skip "q only:" line
+            full_line = next(inputfile)  # get "full:" line
+            if "  full:" in full_line:
+                parts = full_line.split()
+                x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                # Convert from Debye to atomic units (e·bohr)
+                debye_to_au = 0.393430307
+                dipole = np.array([x * debye_to_au, y * debye_to_au, z * debye_to_au])
+                if not hasattr(self, "moments"):
+                    self.set_attribute("moments", [dipole])
+                else:
+                    self.moments[0] = dipole
+
+        # Parse polarizability
+        polarizability = _extract_polarizability(line)
+        if polarizability is not None:
+            self.append_attribute("polarizabilities", polarizability)
+
 
 def _extract_version(line: str) -> Optional[str]:
     """
@@ -927,3 +956,40 @@ def _is_hessian_line(line: str) -> bool:
     0.0162496487   0.0000016361   0.1907680190   0.1825630415
     """
     return "$hessian" in line
+
+
+def _extract_nbasis(line: str) -> Optional[int]:
+    """
+    Extract the number of basis functions from the SETUP section.
+
+          ...................................................
+          :                      SETUP                      :
+          :.................................................:
+          :  # basis functions                  50          :
+          :  # atomic orbitals                  50          :
+    """
+    if ":  # basis functions" in line:
+        return int(line.split()[-2])
+    return None
+
+
+# Dipole moment extraction is now handled directly in extract() method
+
+
+def _extract_polarizability(line: str) -> Optional[np.ndarray]:
+    """
+    Extract the molecular polarizability from the output.
+    Returns polarizability in atomic units (bohr^3).
+
+     Mol. C6AA /au·bohr⁶  :       4845.995176
+     Mol. C8AA /au·bohr⁸  :     118417.805022
+     Mol. α(0) /au        :        112.956540
+
+    The polarizability is isotropic (scalar value) so we return a 3x3
+    diagonal matrix with this value on the diagonal.
+    """
+    if "Mol. α(0) /au" in line:
+        alpha = float(line.split()[-1])
+        # Return as a 3x3 diagonal matrix for consistency with cclib
+        return np.diag([alpha, alpha, alpha])
+    return None

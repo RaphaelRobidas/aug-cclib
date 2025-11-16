@@ -827,6 +827,37 @@ class XTBSPTest(GenericSPTest):
     scfenergy = -26.425939358406
     scfenergy_delta = 1.0e-6
 
+    def testnbasis(self, data) -> None:
+        """Does the nbasis match the expected value?"""
+        assert data.nbasis == 50
+
+    def testnmo(self, data) -> None:
+        """Does the nmo match the expected value (should equal nbasis for XTB)?"""
+        assert data.nmo == 50
+        assert data.nmo == data.nbasis
+
+    def testmoments_dipole(self, data) -> None:
+        """Is the dipole moment parsed and correct?"""
+        assert hasattr(data, "moments")
+        assert len(data.moments) >= 1
+        # For symmetric dvb molecule, dipole should be zero
+        assert numpy.allclose(data.moments[0], [0.0, 0.0, 0.0], atol=1e-6)
+
+    def testpolarizabilities(self, data) -> None:
+        """Is the polarizability parsed and reasonable?"""
+        assert hasattr(data, "polarizabilities")
+        assert len(data.polarizabilities) >= 1
+        # Check it's a 3x3 matrix
+        assert data.polarizabilities[0].shape == (3, 3)
+        # For XTB, isotropic polarizability is on diagonal
+        assert numpy.allclose(
+            data.polarizabilities[0],
+            numpy.diag([112.95654, 112.95654, 112.95654]),
+            atol=1e-5,
+        )
+        # Check it's positive (physically meaningful)
+        assert data.polarizabilities[0][0, 0] > 0
+
 
 class GenericDispersionTest:
     """Generic single-geometry dispersion correction unittest"""
