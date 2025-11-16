@@ -269,3 +269,116 @@ def float(number: str) -> float:
         return numpy.nan
 
     return _BUILTIN_FLOAT(number.replace("D", "E"))
+
+
+def parse_float_from_line(line: str, index: int, default=None):
+    """Safely extract a float from a specific index in a split line.
+
+    Args:
+        line: The line to parse
+        index: The index to extract from after splitting
+        default: Default value to return on error (None by default)
+
+    Returns:
+        The parsed float value, or default if parsing fails
+
+    Example:
+        >>> parse_float_from_line("Energy:  -123.456 hartree", 1)
+        -123.456
+    """
+    try:
+        parts = line.split()
+        if abs(index) < len(parts):
+            return float(parts[index])
+    except (ValueError, IndexError):
+        pass
+    return default
+
+
+def parse_int_from_line(line: str, index: int, default=None):
+    """Safely extract an integer from a specific index in a split line.
+
+    Args:
+        line: The line to parse
+        index: The index to extract from after splitting
+        default: Default value to return on error (None by default)
+
+    Returns:
+        The parsed integer value, or default if parsing fails
+
+    Example:
+        >>> parse_int_from_line("Number of atoms: 42", -1)
+        42
+    """
+    try:
+        parts = line.split()
+        if abs(index) < len(parts):
+            return int(parts[index])
+    except (ValueError, IndexError):
+        pass
+    return default
+
+
+def extract_value_if_match(line: str, pattern: str, index: int, dtype=float):
+    """Extract a value from a line if it contains a specific pattern.
+
+    Args:
+        line: The line to parse
+        pattern: The pattern to search for in the line
+        index: The index to extract from after splitting
+        dtype: Type to convert the value to (float or int)
+
+    Returns:
+        The parsed value if pattern matches, None otherwise
+
+    Example:
+        >>> extract_value_if_match("Total energy: -123.456 Eh", "Total energy", -2, float)
+        -123.456
+        >>> extract_value_if_match("Iterations: 42", "Iterations", -1, int)
+        42
+    """
+    if pattern in line:
+        try:
+            parts = line.split()
+            if abs(index) < len(parts):
+                return dtype(parts[index])
+        except (ValueError, IndexError):
+            pass
+    return None
+
+
+def parse_coordinates_table(inputfile, start_line: str, end_pattern: str,
+                            coord_indices: List[int]) -> List[List[float]]:
+    """Parse a table of coordinates from an input file.
+
+    Args:
+        inputfile: File iterator to read from
+        start_line: The line that triggered entry into this function
+        end_pattern: Pattern that signals the end of the table
+        coord_indices: List of indices where coordinates are located in split line
+
+    Returns:
+        List of coordinate lists
+
+    Example:
+        For parsing XYZ coordinates at indices [1, 2, 3]:
+        >>> coords = parse_coordinates_table(f, line, "---", [1, 2, 3])
+    """
+    coordinates = []
+    line = next(inputfile)
+
+    while end_pattern not in line:
+        try:
+            parts = line.split()
+            if len(parts) > max(coord_indices):
+                coords = [float(parts[i]) for i in coord_indices]
+                coordinates.append(coords)
+        except (ValueError, IndexError):
+            pass
+
+        try:
+            line = next(inputfile)
+        except StopIteration:
+            break
+
+    return coordinates
