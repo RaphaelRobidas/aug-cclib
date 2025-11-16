@@ -364,7 +364,7 @@ class XTB(logfileparser.Logfile):
             while line != "\n":
                 hessian.extend([float(v) for v in line.split()])
                 line = next(inputfile)
-            self.set_attribute("hessian", np.reshape(hessian, 3 * self.natom, 3 * self.natom))
+            self.set_attribute("hessian", np.reshape(hessian, (3 * self.natom, 3 * self.natom)))
 
         # Parse nbasis and nmo from SETUP section
         nbasis = _extract_nbasis(line)
@@ -593,7 +593,7 @@ def _extract_orbitals(line: str) -> Optional[Tuple[int, float, float, bool]]:
             int(line_split[0]),
             float(line_split[1]),
             float(line_split[3]),
-            bool("(HOMO) in line"),
+            "(HOMO)" in line,
         )
     if "(LUMO)" in line or (len(line_split) == 3 and "MO" not in line):
         return int(line_split[0]), 0.0, float(line_split[2]), False
