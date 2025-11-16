@@ -3,9 +3,11 @@
 # This file is part of cclib (http://cclib.github.io) and is distributed under
 # the terms of the BSD 3-Clause License.
 
+import pytest
+
+pytest.importorskip("pyquante2", reason="Must install pyquante2 to run this test")
 
 from cclib.bridge import cclib2pyquante
-from cclib.parser.utils import find_package
 
 from numpy.testing import assert_array_almost_equal
 
@@ -16,9 +18,6 @@ class pyquante2Test:
     """Tests for the cclib2pyquante bridge in cclib."""
 
     def setup_method(self) -> None:
-        if not find_package("pyquante2"):
-            raise ImportError("Must install pyquante2 to run this test")
-
         self.data, self.logfile = getdatafile("Gaussian", "basicGaussian16", ["water_ccsd.log"])
 
     def test_makepyquante(self) -> None:

@@ -3,18 +3,17 @@
 # This file is part of cclib (http://cclib.github.io) and is distributed under
 # the terms of the BSD 3-Clause License.
 
+import pytest
+
+pytest.importorskip("Bio", reason="Must install biopython to run this test")
+
 from cclib.bridge import cclib2biopython
-from cclib.parser.utils import find_package
 
 import numpy
 
 
 class BiopythonTest:
     """Tests for the cclib2biopython bridge in cclib."""
-
-    def setup_method(self):
-        if not find_package("Bio"):
-            raise ImportError("Must install biopython to run this test")
 
     def test_makebiopython(self):
         from Bio.PDB.Superimposer import Superimposer

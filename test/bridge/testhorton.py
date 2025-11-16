@@ -4,9 +4,11 @@
 # the terms of the BSD 3-Clause License.
 
 import os
+import pytest
+
+pytest.importorskip("iodata", reason="Must install iodata to run this test")
 
 from cclib.bridge import cclib2horton
-from cclib.parser.utils import find_package
 
 import numpy
 from numpy.testing import assert_array_almost_equal
@@ -25,9 +27,6 @@ class HortonTest:
         self.data, self.logfile = getdatafile("FChk", "basicGaussian16", ["dvb_un_sp.fchk"])
         datadir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
         inputfile = os.path.join(datadir, "FChk", "basicGaussian16", "dvb_un_sp.fchk")
-
-        if not find_package("iodata"):
-            raise ImportError("Must install iodata to run this test")
 
         from iodata.api import load_one
 

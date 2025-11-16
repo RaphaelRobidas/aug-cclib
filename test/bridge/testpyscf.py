@@ -3,10 +3,14 @@
 # This file is part of cclib (http://cclib.github.io) and is distributed under
 # the terms of the BSD 3-Clause License.
 
+import pytest
+
+pytest.importorskip("pyscf", reason="Must install pyscf to run this test")
+
 from test.test_data import getdatafile
 
 from cclib.bridge import cclib2pyscf
-from cclib.parser.utils import convertor, find_package
+from cclib.parser.utils import convertor
 
 import numpy as np
 
@@ -14,8 +18,6 @@ import numpy as np
 class PyscfTest:
     @classmethod
     def setup_class(cls) -> None:
-        if not find_package("pyscf"):
-            raise ImportError("Must install pyscf to run this test")
         cls.data, cls.logfile = getdatafile("Gaussian", "basicGaussian16", ["dvb_sp.out"])
         cls.udata, cls.ulogfile = getdatafile("Gaussian", "basicGaussian16", ["dvb_un_sp.log"])
 

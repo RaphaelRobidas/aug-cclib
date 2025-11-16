@@ -3,8 +3,11 @@
 # This file is part of cclib (http://cclib.github.io) and is distributed under
 # the terms of the BSD 3-Clause License.
 
+import pytest
+
+pytest.importorskip("psi4", reason="Must install psi4 to run this test")
+
 from cclib.bridge import cclib2psi4
-from cclib.parser.utils import find_package
 
 import numpy as np
 
@@ -13,9 +16,6 @@ class Psi4Test:
     """Tests for the cclib2psi4 bridge in cclib."""
 
     def test_makepsi4(self):
-        if not find_package("psi4"):
-            raise ImportError("Must install psi4 to run this test")
-
         import psi4
         from psi4 import energy
 
