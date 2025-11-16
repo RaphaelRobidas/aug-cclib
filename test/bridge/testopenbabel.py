@@ -4,6 +4,9 @@
 # the terms of the BSD 3-Clause License.
 
 import os
+import pytest
+
+pytest.importorskip("openbabel", reason="Must install openbabel to run this test")
 
 from cclib.bridge import cclib2openbabel
 
