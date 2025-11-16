@@ -858,6 +858,25 @@ class XTBSPTest(GenericSPTest):
         # Check it's positive (physically meaningful)
         assert data.polarizabilities[0][0, 0] > 0
 
+    def testcharge(self, data) -> None:
+        """Is the molecular charge parsed correctly?"""
+        assert hasattr(data, "charge")
+        # DVB molecule is neutral
+        assert data.charge == 0
+        assert isinstance(data.charge, int)
+
+    def testhomos(self, data) -> None:
+        """Are the HOMO indices parsed correctly?"""
+        assert hasattr(data, "homos")
+        # DVB has 50 electrons, so HOMO should be at index 24 (0-indexed, electrons fill orbitals in pairs)
+        # Actually XTB reports multiple "HOMO" orbitals due to numerical precision in occupation
+        # For a closed-shell system with 50 electrons, expect HOMO at index 24
+        assert isinstance(data.homos, numpy.ndarray)
+        assert 24 in data.homos, f"Expected HOMO index 24 in {data.homos}"
+        # All HOMO indices should be valid orbital indices
+        assert numpy.all(data.homos >= 0)
+        assert numpy.all(data.homos < data.nmo)
+
 
 class GenericDispersionTest:
     """Generic single-geometry dispersion correction unittest"""

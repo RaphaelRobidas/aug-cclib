@@ -8,6 +8,7 @@
 from cclib.parser import utils
 
 import numpy
+import pytest
 from common import get_minimum_carbon_separation, is_optdone, is_optnew, is_optunknown
 from skip import skipForLogfile, skipForParser
 
@@ -500,6 +501,42 @@ class XTBGeoOptTest(GenericGeoOptTest):
 
     scfenergy = -26.438242468348
     scfenergy_tolerance = 1.0e-6
+
+    def testoptdone(self, data) -> None:
+        """Has the geometry optimization converged?"""
+        assert hasattr(data, "optdone")
+        # optdone can be either bool or list depending on ccData type
+        if isinstance(data.optdone, bool):
+            assert data.optdone is True
+        elif isinstance(data.optdone, list):
+            assert len(data.optdone) == 1
+            # Converged at step 5 (0-indexed, so 6th geometry)
+            assert data.optdone[0] == 5
+        else:
+            raise AssertionError(f"Unexpected optdone type: {type(data.optdone)}")
+
+    def testscfenergies_opt(self, data) -> None:
+        """Are SCF energies consistent with optimization steps?"""
+        assert hasattr(data, "scfenergies")
+        # Should have 6 optimization steps
+        assert len(data.scfenergies) == 6
+
+        # Energy should decrease during optimization (with small tolerance for numerical noise)
+        energy_diffs = numpy.diff(data.scfenergies)
+        assert numpy.all(energy_diffs <= 1e-6), "Energy should decrease or stay constant"
+
+        # Final energy should match reference
+        assert pytest.approx(data.scfenergies[-1], abs=self.scfenergy_tolerance) == self.scfenergy
+
+        # First energy (initial geometry)
+        assert pytest.approx(data.scfenergies[0], abs=1e-6) == -26.4259394
+
+    def testcharge(self, data) -> None:
+        """Is the molecular charge parsed correctly?"""
+        assert hasattr(data, "charge")
+        # DVB molecule is neutral
+        assert data.charge == 0
+        assert isinstance(data.charge, int)
 
 
 class TurbomoleKeepGeoOptTest(GenericGeoOptTest):

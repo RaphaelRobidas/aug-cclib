@@ -119,6 +119,15 @@ class XTB(logfileparser.Logfile):
 
                 line = next(inputfile)
 
+        # Check if geometry optimization converged
+        if "GEOMETRY OPTIMIZATION CONVERGED" in line:
+            if not hasattr(self, "optdone"):
+                self.set_attribute("optdone", [])
+            # Extract the geometry step where convergence occurred
+            # The cycle index is at the end of the final geometry
+            if hasattr(self, "scfenergies"):
+                self.optdone.append(len(self.scfenergies) - 1)
+
         # TODO: Use the `xtbopt.xyz` file if available since it has higher precision and
         # has the coordinates for every geometry step. If it's not an optimization,
         # can simply assume the structure is the same as that in the coordinate file.
@@ -846,6 +855,28 @@ def _extract_raman_intensities(line: str) -> Optional[List[float]]:
     """
     match = re.findall(r"\d+\.\d+", line)
     return [float(val) for val in match] if match else None
+
+
+def _extract_gradient_norm(line: str) -> Optional[float]:
+    """
+    Extract the gradient norm from geometry optimization steps.
+
+    Example from optimization output:
+     * total energy  :   -26.4259394 Eh     change       -0.6016592E-09 Eh
+       gradient norm :     0.0880510 Eh/α   predicted     0.0000000E+00 (-100.00%)
+       displ. norm   :     0.3172039 α      lambda       -0.1363057E-01
+
+    Units: Eh/α (hartree/bohr)
+    """
+    if "gradient norm :" in line:
+        parts = line.split()
+        # Find the index of "norm" and the value is two positions after it
+        try:
+            norm_idx = parts.index("norm")
+            return float(parts[norm_idx + 2])
+        except (ValueError, IndexError):
+            return None
+    return None
 
 
 def _extract_program_call(line: str) -> Optional[List[str]]:
