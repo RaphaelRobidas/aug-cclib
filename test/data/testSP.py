@@ -898,21 +898,23 @@ class XTBSPTest(GenericSPTest):
         import datetime
         assert isinstance(data.metadata["wall_time"], list)
         assert isinstance(data.metadata["cpu_time"], list)
-        assert len(data.metadata["wall_time"]) >= 1
-        assert len(data.metadata["cpu_time"]) >= 1
+        assert len(data.metadata["wall_time"]) == 1
+        assert len(data.metadata["cpu_time"]) == 1
         assert isinstance(data.metadata["wall_time"][0], datetime.timedelta)
         assert isinstance(data.metadata["cpu_time"][0], datetime.timedelta)
 
-        # CPU time should be >= wall time (for parallel execution)
-        # For dvb_sp.out: wall=0.595s, cpu=11.848s (19.9x speedup with 20 threads)
+        # Extract values in seconds
         wall_seconds = data.metadata["wall_time"][0].total_seconds()
         cpu_seconds = data.metadata["cpu_time"][0].total_seconds()
+
+        # CPU time should be >= wall time (for parallel execution)
         assert cpu_seconds >= wall_seconds, "CPU time should be >= wall time"
 
-        # Check approximate reference values (with tolerance for different systems)
-        # Reference: wall-time: 0.595 sec (but allow wide tolerance)
-        assert 0.1 < wall_seconds < 10.0, f"Wall time {wall_seconds}s seems unreasonable"
-        assert 0.1 < cpu_seconds < 100.0, f"CPU time {cpu_seconds}s seems unreasonable"
+        # Reference values from dvb_sp.out (SCF timings):
+        # * wall-time:     0 d,  0 h,  0 min,  0.595 sec
+        # *  cpu-time:     0 d,  0 h,  0 min, 11.848 sec
+        assert pytest.approx(wall_seconds, abs=0.001) == 0.595
+        assert pytest.approx(cpu_seconds, abs=0.001) == 11.848
 
 
 class GenericDispersionTest:

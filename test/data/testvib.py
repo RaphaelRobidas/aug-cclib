@@ -518,10 +518,11 @@ class XTBIRTest(GenericIRTest):
     def testtemperature(self, data) -> None:
         """Is the temperature parsed correctly?"""
         assert hasattr(data, "temperature")
-        # Reference value: 298.15 K (standard temperature)
+        # Reference value from dvb_ir.out: 298.15 K (standard temperature)
         assert pytest.approx(data.temperature, abs=0.01) == 298.15
-        # Temperature should be positive and reasonable
-        assert 200 < data.temperature < 400
+        # Type and sign check
+        assert isinstance(data.temperature, (float, np.floating))
+        assert data.temperature > 0
 
 
 class GenericIRimgTest:
