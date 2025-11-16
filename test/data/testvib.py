@@ -386,6 +386,72 @@ class OrcaIRTest(GenericIRTest):
     # ORCA 6.0/dvb_ir.out
     rotconsts = [4.614498, 0.685206, 0.596614]
 
+    def testtemperature(self, data) -> None:
+        """Is the temperature parsed correctly?"""
+        assert hasattr(data, "temperature")
+        # Reference value from dvb_ir.out: 298.15 K
+        assert pytest.approx(data.temperature, abs=0.01) == 298.15
+        assert isinstance(data.temperature, (float, np.floating))
+        assert data.temperature > 0
+
+    def testentropy_exact(self, data) -> None:
+        """Is the entropy parsed correctly?"""
+        assert hasattr(data, "entropy")
+        # Note: Values differ between ORCA 5.0 and 6.0
+        # ORCA 5.0: 0.00014384698977024988 Eh/K
+        # ORCA 6.0: 0.00014392205265805803 Eh/K
+        # Entropy should be positive and in reasonable range for this molecule
+        assert data.entropy > 0
+        assert 0.0001 < data.entropy < 0.001  # Eh/K
+
+    def testenthalpy_exact(self, data) -> None:
+        """Is the enthalpy parsed correctly?"""
+        assert hasattr(data, "enthalpy")
+        # Note: Values differ between ORCA 5.0 and 6.0
+        # ORCA 5.0: -381.86823907 Eh
+        # ORCA 6.0: -381.86823509 Eh
+        # Enthalpy should be negative for stable molecules
+        assert data.enthalpy < 0
+        assert -382 < data.enthalpy < -381  # Eh
+
+    def testfreeenergy_exact(self, data) -> None:
+        """Is the free energy parsed correctly?"""
+        assert hasattr(data, "freeenergy")
+        # Note: Values differ between ORCA 5.0 and 6.0
+        # ORCA 5.0: -381.91112705 Eh
+        # ORCA 6.0: -381.91114546 Eh
+        # Free energy should be negative for stable molecules
+        assert data.freeenergy < 0
+        assert -382 < data.freeenergy < -381  # Eh
+
+    def testmetadata_timings(self, data) -> None:
+        """Are wall time and CPU time parsed correctly?"""
+        assert hasattr(data, "metadata")
+        assert "wall_time" in data.metadata
+        assert "cpu_time" in data.metadata
+
+        import datetime
+        assert isinstance(data.metadata["wall_time"], list)
+        assert isinstance(data.metadata["cpu_time"], list)
+        assert len(data.metadata["wall_time"]) == 1
+        assert len(data.metadata["cpu_time"]) == 1
+        assert isinstance(data.metadata["wall_time"][0], datetime.timedelta)
+        assert isinstance(data.metadata["cpu_time"][0], datetime.timedelta)
+
+        # Extract values in seconds
+        wall_seconds = data.metadata["wall_time"][0].total_seconds()
+        cpu_seconds = data.metadata["cpu_time"][0].total_seconds()
+
+        # CPU time should be >= wall time (for parallel execution)
+        assert cpu_seconds >= wall_seconds
+
+        # Note: Timing values differ between ORCA 5.0 and 6.0
+        # ORCA 5.0: wall=138.241s, cpu=276.482s
+        # ORCA 6.0: wall=50.462s, cpu=100.924s
+        # Times should be positive
+        assert wall_seconds > 0
+        assert cpu_seconds > 0
+
 
 class Psi4HFIRTest(GenericIRTest):
     """Customized vibrational frequency unittest"""
@@ -608,6 +674,28 @@ class OrcaRamanTest(GenericRamanTest):
     """Customized Raman unittest"""
 
     max_raman_intensity = 1045
+
+    def testvibramans_exact(self, data, numvib) -> None:
+        """Are Raman intensities parsed correctly with exact values?"""
+        assert hasattr(data, "vibramans")
+        assert len(data.vibramans) == numvib
+
+        # Reference values from dvb_raman.out (ORCA 5.0)
+        # Max intensity should be 1037.104624
+        assert pytest.approx(data.vibramans.max(), abs=0.001) == 1037.104624
+
+        # Check specific values for first few modes
+        # Mode 0: 0.0, Mode 1: 2.498442, Mode 2: 0.0, Mode 3: 0.0, Mode 4: 7.649875
+        expected_first_five = [0.0, 2.498442, 0.0, 0.0, 7.649875]
+        for i in range(5):
+            assert pytest.approx(data.vibramans[i], abs=0.001) == expected_first_five[i]
+
+        # Raman intensities should be non-negative
+        assert np.all(data.vibramans >= 0)
+
+        # Type check
+        assert isinstance(data.vibramans, np.ndarray)
+        assert data.vibramans.dtype in (np.float64, np.float32)
 
 
 class Orca6RamanTest(GenericRamanTest):

@@ -754,6 +754,31 @@ class OrcaSPTest(GenericSPTest):
 
     rotconsts = [4.614497946, 0.685205544, 0.596614430]
 
+    def testmetadata_timings(self, data) -> None:
+        """Are wall time and CPU time parsed correctly?"""
+        assert hasattr(data, "metadata")
+        assert "wall_time" in data.metadata
+        assert "cpu_time" in data.metadata
+
+        import datetime
+        assert isinstance(data.metadata["wall_time"], list)
+        assert isinstance(data.metadata["cpu_time"], list)
+        assert len(data.metadata["wall_time"]) == 1
+        assert len(data.metadata["cpu_time"]) == 1
+        assert isinstance(data.metadata["wall_time"][0], datetime.timedelta)
+        assert isinstance(data.metadata["cpu_time"][0], datetime.timedelta)
+
+        # Extract values in seconds
+        wall_seconds = data.metadata["wall_time"][0].total_seconds()
+        cpu_seconds = data.metadata["cpu_time"][0].total_seconds()
+
+        # CPU time should be >= wall time (for parallel execution)
+        assert cpu_seconds >= wall_seconds
+
+        # Times should be positive
+        assert wall_seconds > 0
+        assert cpu_seconds > 0
+
 
 class OrcaHFSPTest(OrcaSPTest, GenericHFSPTest):
     """Customized restricted single point unittest"""
