@@ -6,7 +6,29 @@ This page outlines the various ways cclib can be used to parse and write logfile
 From Python
 +++++++++++
 
-Importing cclib and parsing a file is a few lines of Python code, making it simple to access data from the output file of any supported computational chemistry program. For example:
+Importing cclib and parsing a file is a few lines of Python code, making it simple to access data from the output file of any supported computational chemistry program.
+
+Simple parsing (recommended)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The simplest way to parse a file is using the ``cclib.parse()`` function:
+
+.. code-block:: python
+
+  >>> import cclib
+
+  >>> filename = "water.out"
+  >>> data = cclib.parse(filename)
+  >>> print("There are %i atoms and %i MOs" % (data.natom, data.nmo))
+
+  There are 3 atoms and 7 MOs
+
+This is the recommended approach for most users as it combines file format detection and parsing in a single step.
+
+Alternative parsing methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For more control over the parsing process, you can use the traditional two-step approach:
 
 .. code-block:: python
 
@@ -19,7 +41,7 @@ Importing cclib and parsing a file is a few lines of Python code, making it simp
 
   There are 3 atoms and 7 MOs
 
-A newer command, ``ccread``, combines both the format detection and parsing steps:
+Alternatively, ``ccread`` is available (combines both format detection and parsing):
 
 .. code-block:: python
 
@@ -30,6 +52,9 @@ A newer command, ``ccread``, combines both the format detection and parsing step
   >>> print("There are %i atoms and %i MOs" % (data.natom, data.nmo))
 
   There are 3 atoms and 7 MOs
+
+Accessing parsed data
+~~~~~~~~~~~~~~~~~~~~~~
 
 The ``data`` object above contains all the information cclib was able to to parse from the output file, available as attributes on the object:
 
@@ -42,6 +67,111 @@ The ``data`` object above contains all the information cclib was able to to pars
 You can find a full list of these attribute on the `parsed data`_ page.
 
 .. _`parsed data`: data.html
+
+Checking attribute availability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use the ``has()`` method to check if an attribute is available before accessing it:
+
+.. code-block:: python
+
+  >>> if data.has('vibfreqs'):
+  ...     print(f"Found {len(data.vibfreqs)} vibrational frequencies")
+  ... else:
+  ...     print("No vibrational frequencies available")
+
+If you try to access an unavailable attribute, cclib will provide a helpful error message:
+
+.. code-block:: python
+
+  >>> data.vibfreqs  # If not available in this calculation
+  AttributeError: 'ccData' object does not have attribute 'vibfreqs'.
+  This attribute was not parsed from the output file. This usually means
+  the calculation did not produce this property, or it is not supported
+  by the parser for this QM package. Use has('vibfreqs') to check if an
+  attribute is available before accessing it.
+
+Working with units
+~~~~~~~~~~~~~~~~~~
+
+Energy units (hartree vs eV)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note::
+   **Important change in cclib 1.9:** All energy attributes now use atomic units (hartree)
+   instead of eV for consistency. Use the ``convert()`` method to convert to other units.
+
+All energy attributes in cclib use atomic units (hartree):
+
+.. code-block:: python
+
+  >>> data = cclib.parse("water.out")
+  >>> data.scfenergies[0]  # Energy in hartree
+  -76.026760
+
+To convert to other units, use the ``convert()`` method:
+
+.. code-block:: python
+
+  >>> # Convert to eV
+  >>> data.convert('scfenergies', 'eV')[0]
+  -2069.123
+
+  >>> # Convert to kcal/mol
+  >>> data.convert('scfenergies', 'kcal/mol')[0]
+  -47713.45
+
+  >>> # Convert to kJ/mol
+  >>> data.convert('scfenergies', 'kJ/mol')[0]
+  -199681.23
+
+Supported units for energy: ``hartree``, ``eV``, ``kcal/mol``, ``kJ/mol``, ``wavenumber``
+
+The ``convert()`` method works with any energy attribute:
+
+.. code-block:: python
+
+  >>> data.convert('moenergies', 'eV')  # Molecular orbital energies
+  >>> data.convert('ccenergies', 'kcal/mol')  # Coupled-cluster energies
+  >>> data.convert('freeenergy', 'kJ/mol')  # Free energy
+
+Understanding energy attributes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For post-HF calculations (MP2, CCSD, etc.), it's important to understand the difference
+between reference energies and correlated energies:
+
+.. code-block:: python
+
+  >>> # For an MP2 calculation:
+  >>> data = cclib.parse("water_mp2.out")
+
+  >>> # Reference HF energy (NOT the MP2 energy!)
+  >>> data.scfenergies[0]
+  -74.964329
+
+  >>> # Clearer alias for the same thing
+  >>> data.referenceenergies[0]
+  -74.964329
+
+  >>> # Actual MP2 energy
+  >>> data.mpenergies[0]
+  -75.002379
+
+  >>> # Automatically get the best available energy
+  >>> data.electronicenergies[0]  # Returns MP2 energy
+  -75.002379
+
+  >>> # Calculate correlation energy
+  >>> correlation = data.electronicenergies[0] - data.referenceenergies[0]
+  >>> print(f"Correlation energy: {correlation:.6f} hartree")
+  Correlation energy: -0.038050 hartree
+
+The ``electronicenergies`` property automatically selects the highest level of theory available:
+
+- For CCSD calculations: returns ``ccenergies``
+- For MP2/MP3/MP4 calculations: returns ``mpenergies``
+- For HF/DFT calculations: returns ``scfenergies``
 
 From command line
 +++++++++++++++++

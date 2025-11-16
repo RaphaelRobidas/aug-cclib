@@ -4,6 +4,42 @@
 Changelog
 =========
 
+Changes in cclib-1.9 (unreleased)
+----------------------------------
+
+**Features**
+
+    * **NEW API:** Convenience function ``cclib.parse()`` for simpler one-line parsing (#TBD)
+    * **NEW API:** Better error handling with helpful messages for missing attributes (#TBD)
+    * **NEW API:** Consistent units - all energy attributes now in hartree (atomic units) (#TBD)
+    * **NEW API:** Unit conversion method ``data.convert()`` for flexible unit handling (#TBD)
+    * **NEW API:** Clearer energy naming with ``referenceenergies`` and ``electronicenergies`` properties (#TBD)
+    * **NEW METHOD:** ``data.has()`` method to check attribute availability before access (#TBD)
+    * Improved documentation for ``scfenergies`` attribute to clarify meaning for post-HF methods (#TBD)
+
+**Breaking Changes**
+
+    * **IMPORTANT:** Energy attributes changed from eV to hartree (atomic units):
+
+      - ``scfenergies``: HF/DFT reference energies (formerly in eV, now in hartree)
+      - ``ccenergies``: Coupled-Cluster energies (formerly in eV, now in hartree)
+      - ``mpenergies``: Møller-Plesset energies (formerly in eV, now in hartree)
+      - ``dispersionenergies``: Dispersion corrections (formerly in eV, now in hartree)
+      - ``moenergies``: Molecular orbital energies (formerly in eV, now in hartree)
+      - ``scanenergies``: Scan energies (formerly in eV, now in hartree)
+
+      **Migration:** Use ``data.convert('attribute_name', 'eV')`` to convert to eV if needed.
+      See migration guide in documentation for details.
+
+**Bugfixes**
+
+    * Updated all test suites to work with new hartree units (#TBD)
+
+**Developer facing changes**
+
+    * Removed eV conversions from ``logfileparser.after_parsing()`` (#TBD)
+    * Updated test files: testSP.py, testGeoOpt.py, testCC.py, testScan.py, testnuclear.py, testpyscf.py (#TBD)
+
 Changes in cclib-1.8.1
 ----------------------
 
